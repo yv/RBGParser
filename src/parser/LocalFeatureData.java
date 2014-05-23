@@ -1,5 +1,7 @@
 package parser;
 
+import java.util.Random;
+
 import parser.Options.LearningMode;
 import parser.decoding.DependencyDecoder;
 import utils.FeatureVector;
@@ -53,6 +55,9 @@ public class LocalFeatureData {
 	
 	FeatureDataItem[] psc;			// parent-sib-mod-child, [dep id (p, sib)][dep id (mod, child)]
 	
+	public DependencyPipe getPipe() {
+		return pipe;
+	}
 	
 	public LocalFeatureData(DependencyInstance inst,
 			DependencyParser parser, boolean indexGoldArcs) 
@@ -100,6 +105,7 @@ public class LocalFeatureData {
 	
 	private void initFirstOrderTables() 
 	{
+		//Random r = new Random();
 		for (int i = 0; i < len; ++i) {
 			wordFvs[i] = pipe.createWordFeatures(inst, i);
 			//wpU[i] = parameters.projectU(wordFvs[i]);
@@ -115,6 +121,9 @@ public class LocalFeatureData {
                     arcNtScores[i*len+j] = parameters.dotProduct(arcFvs[i*len+j]) * gamma;
 					arcScores[i*len+j] = parameters.dotProduct(arcFvs[i*len+j]) * gamma
 									+ parameters.dotProduct(wpU[i], wpV[j], i-j) * (1-gamma);
+				
+					//arcScores[i*len+j] = r.nextGaussian();
+					//arcNtScores[i*len+j] = arcScores[i*len+j];
 				}
 		
 		if (options.learnLabel) {
@@ -258,7 +267,12 @@ public class LocalFeatureData {
 		return staticTypes;
 	}
 	
-	public boolean isPruned(int h, int m) 
+    public boolean hasPruning()
+    {
+        return isPruned != null;
+    }
+
+    public boolean isPruned(int h, int m) 
 	{
 		return isPruned[m*len+h];
 	}
@@ -377,6 +391,121 @@ public class LocalFeatureData {
 			getPSCFeatureVector(h, m, c, sib);
 
 		return psc[pos].score;
+	}
+	
+	public FeatureVector getPartialFeatureVector(int[] heads, int x)
+	{
+		FeatureVector fv = new FeatureVector(size);
+		
+		// 1st order arc
+		fv.addEntries(arcFvs[heads[x]*len+x]);
+		
+		if (options.learningMode != LearningMode.Basic) {
+			
+			DependencyArcList arcLis = new DependencyArcList(heads);
+			
+			// 2nd order (h,m,s) & (m,s)
+			for (int h = 0; h < len; ++h) if (h != x) {
+				
+				int st = arcLis.startIndex(h);
+				int ed = arcLis.endIndex(h);
+				
+				for (int p = st; p+1 < ed; ++p) {
+					// mod and sib
+					int m = arcLis.get(p);
+					int s = arcLis.get(p+1);
+					
+					if (options.useCS) {
+						if (m <= x && x <= s)
+							fv.addEntries(getTripsFeatureVector(h, m, s));
+							fv.addEntries(getSibFeatureVector(m, s));
+					}
+					
+					// tri-sibling
+					if (options.useTS && p + 2 < ed) {
+						int s2 = arcLis.get(p + 2);
+						if (m <= x && x <= s2)
+							fv.addEntries(getTriSibFeatureVector(h, m, s, s2));
+					}
+					
+					if (x < m) break;
+					
+				}
+			}
+
+			for (int h = 0; h < len; ++h) {
+				
+				int st = arcLis.startIndex(h);
+				int ed = arcLis.endIndex(h);
+				
+				for (int p = st; p+1 < ed; ++p) {
+					// mod and sib
+					int m = arcLis.get(p);
+					int s = arcLis.get(p+1);
+					
+					// gp-sibling
+					int gp = heads[h];
+					if (options.useGS && gp >= 0) {
+						if (x == h || (m <= x && x <= s))
+							fv.addEntries(getGPSibFeatureVector(gp, h, m, s));
+					}
+					
+					// parent, sibling and child
+					if (options.usePSC) {
+						// mod's child
+						int mst = arcLis.startIndex(m);
+						int med = arcLis.endIndex(m);
+						
+						for (int mp = mst; mp < med; ++mp) {
+							int c = arcLis.get(mp);
+							if ((m <= x && x <= s) || x == c)
+								fv.addEntries(getPSCFeatureVector(h, m, c, s));
+						}
+						
+						// sib's child
+						int sst = arcLis.startIndex(s);
+						int sed = arcLis.endIndex(s);
+						
+						for (int sp = sst; sp < sed; ++sp) {
+							int c = arcLis.get(sp);
+							if ((m <= x && x <= s) || x == c)
+								fv.addEntries(getPSCFeatureVector(h, s, c, m));
+						}
+					}
+				}
+			}
+			
+			for (int m = 1; m < len; ++m) {
+				int h = heads[m];
+				
+				Utils.Assert(h >= 0);
+				
+				// grandparent
+				int gp = heads[h];
+				if (options.useGP && gp != -1
+						&& (x == m || x == h)) {
+					fv.addEntries(getGPCFeatureVector(gp, h, m));
+				}
+				
+				// head bigram
+				if (options.useHB && m + 1 < len
+						&& (x == m || x == m + 1)) {
+					int h2 = heads[m + 1];
+					Utils.Assert(h2 >= 0);
+					
+					fv.addEntries(getHeadBiFeatureVector(h, m, h2));
+				}
+
+				// great-grandparent
+				if (options.useGGP && gp != -1 && heads[gp] != -1
+						&& (x == m || x == h || x == gp)) {
+					int ggp = heads[gp];
+					fv.addEntries(getGGPCFeatureVector(ggp, gp, h, m));
+				}
+			}
+		}
+		
+		return fv;
 	}
 	
 	public double getPartialScore(int[] heads, int x)

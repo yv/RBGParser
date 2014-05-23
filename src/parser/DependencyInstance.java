@@ -89,6 +89,7 @@ public class DependencyInstance implements Serializable {
     
     public DependencyInstance(DependencyInstance a) {
     	//this(a.forms, a.lemmas, a.cpostags, a.postags, a.feats, a.heads, a.deprels);
+    	
     	specialPos = a.specialPos;
     	length = a.length;
     	heads = a.heads;

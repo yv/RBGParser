@@ -67,6 +67,10 @@ public class DependencyPipe implements Serializable {
 	public HashSet<String> conjWord;
 	public HashMap<String, String> coarseMap;
 	
+	public Alphabet getArcAlphabet() {
+		return arcAlphabet;
+	}
+	
 	public DependencyPipe(Options options) throws IOException 
 	{
 		tagDictionary = new Dictionary();
@@ -415,6 +419,7 @@ public class DependencyPipe implements Serializable {
 			
 		    //createFeatures(inst);
 			lt.add(new DependencyInstance(inst));		    
+			//lt.add(inst);		    
 			
 			inst = reader.nextInstance();
 			cnt++;
@@ -723,9 +728,9 @@ public class DependencyPipe implements Serializable {
     				addCore1OBigramFeatures(fv, inst.formids[h], inst.featids[h][i], 
     						inst.formids[c], inst.featids[c][j], attDist);
     				
-    				if (inst.lemmas != null)
-    					addCore1OBigramFeatures(fv, inst.lemmaids[h], inst.featids[h][i], 
-    							inst.lemmaids[c], inst.featids[c][j], attDist);
+    				//if (inst.lemmas != null)
+    				//	addCore1OBigramFeatures(fv, inst.lemmaids[h], inst.featids[h][i], 
+    				//			inst.lemmaids[c], inst.featids[c][j], attDist);
     			}
     	}
     			

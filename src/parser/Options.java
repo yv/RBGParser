@@ -53,9 +53,14 @@ public class Options implements Cloneable, Serializable {
 	public boolean useHB = true;		// use head bigram
 	public boolean useGS = true;		// use grand sibling
 	public boolean useTS = true;		// use tri-sibling
-	public boolean useGGP = true;		// use great-grandparent
-	public boolean usePSC = true;		// use parent-sibling-child
-	public boolean useHO = true;		// use global feature
+	public boolean useGGP = false;		// use great-grandparent
+	public boolean usePSC = false;		// use parent-sibling-child
+	public boolean useHO = false;		// use global feature
+	
+	public boolean updateGold = false;
+	public boolean updateLocal = false;
+	
+	public double inverseLambda = 0.1;
 	
 	// CoNLL language specific info
 	// used only in Full learning mode
@@ -163,6 +168,12 @@ public class Options implements Cloneable, Serializable {
             	else if (str.equals("full"))
             		learningMode = LearningMode.Full;
             }
+            else if (arg.startsWith("converge")) {
+            	numHcConverge = Integer.parseInt(arg.split(":")[1]);
+            }
+            else if (arg.startsWith("lambda")) {
+            	inverseLambda = 1.0/Double.parseDouble(arg.split(":")[1]);
+            }
 
     	}    	
         
@@ -212,7 +223,8 @@ public class Options implements Cloneable, Serializable {
         System.out.println("projective: " + projective);
         System.out.println("pruning: " + pruning);
         System.out.println("converge iter: " + numHcConverge);
-        
+        System.out.println("lambda inverse: " + inverseLambda);
+       
         System.out.println();
         System.out.println("use consecutive siblings: " + useCS);
         System.out.println("use grandparent: " + useGP);

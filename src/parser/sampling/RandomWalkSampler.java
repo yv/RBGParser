@@ -62,6 +62,7 @@ public class RandomWalkSampler {
     				
     				int candLab = options.learnLabel ? staticTypes[candH][curr] : 0;
     				
+    				/*
     				double s = lfd.getArcScore(candH, curr);
                     //double s = lfd.getArcNoTensorScore(candH, curr);
     				s += options.learnLabel ? lfd.getLabeledArcScore(candH, curr, candLab) : 0.0;
@@ -75,7 +76,10 @@ public class RandomWalkSampler {
 								s += 1.0;
     					} else if (candH != inst.heads[curr])
     						s += 1.0;
-    				}
+    				}*/
+    				
+    				double s = 0.0;		// uniform
+    				
                     score[size] = s;
                     depList[size] = candH;
                     ++size;
@@ -97,14 +101,14 @@ public class RandomWalkSampler {
                     //}
     			//}
     		}
-    		curr = i;
+			curr = i;
     		while (!inTree[curr]) {
     			inTree[curr] = true;
     			curr = predInst.heads[curr]; 
     		}
     	}
     	
-    	return predInst;
+		return predInst;
     }
 
     /*

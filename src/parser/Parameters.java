@@ -1,7 +1,9 @@
 package parser;
 
 import java.io.Serializable;
+import java.util.Random;
 
+import utils.Alphabet;
 import utils.FeatureVector;
 import utils.Utils;
 
@@ -27,7 +29,11 @@ public class Parameters implements Serializable {
 	public transient double[][] totalU, totalV, totalW;
 	public transient double[][] backupU, backupV, backupW;
 	
+	public int[] featureOrder;
+	
 	public transient FeatureVector[] dU, dV, dW;
+	
+	public Random r;
 	
 	public Parameters(DependencyPipe pipe, Options options) 
 	{
@@ -36,6 +42,7 @@ public class Parameters implements Serializable {
 		size = pipe.numArcFeats;		
 		params = new double[size];
 		total = new double[size];
+		featureOrder = new int[size];
 
 		this.options = options;
 		this.labelLossType = options.labelLossType;
@@ -56,6 +63,46 @@ public class Parameters implements Serializable {
 		dV = new FeatureVector[rank];
 		dW = new FeatureVector[rank];
 
+		r = new Random(1);
+		
+		setFeatureOrder(pipe);
+	}
+	
+	public void setFeatureOrder(DependencyPipe pipe) {
+		//for (int i = 0; i < featureOrder.length; ++i)
+		//	featureOrder[i] = 1;
+		
+		Alphabet alphabet = pipe.getArcAlphabet();
+		
+		long[] code = alphabet.toArray();
+		
+		for (int i = 0; i < code.length; ++i) {
+			int paramID = alphabet.lookupIndex(code[i], false);
+			Utils.Assert(paramID >= 0);
+			
+			long template = pipe.extractArcTemplateCode(code[i]);
+			if (template < FeatureTemplate.Arc.COUNT_1O.ordinal()) {
+				featureOrder[paramID] = 1;
+			}
+			else if (template < FeatureTemplate.Arc.COUNT_2O.ordinal()) {
+				featureOrder[paramID] = 2;
+			}
+			else if (template < FeatureTemplate.Arc.COUNT_3O.ordinal()) {
+				featureOrder[paramID] = 3;
+			}
+			else {
+				featureOrder[paramID] = 4;
+			}
+		}
+		
+	}
+	
+	public void randomParams() {
+		//r = new Random(0);
+		for (int i = 0; i < params.length; ++i) {
+			params[i] = r.nextGaussian();
+			//params[i] = 1.0;
+		}
 	}
 	
 	public void randomlyInitUVW() 
@@ -219,7 +266,9 @@ public class Parameters implements Serializable {
     	}
     	
         double loss = - dt.dotProduct(params)*gamma - dtl.dotProduct(params)*gammaLabel + Fi;
-        double l2norm = dt.Squaredl2NormUnsafe() * gamma * gamma + dtl.Squaredl2NormUnsafe() * gammaLabel * gammaLabel;
+        //double l2norm = dt.Squaredl2NormUnsafe() * gamma * gamma + dtl.Squaredl2NormUnsafe() * gammaLabel * gammaLabel;
+        double l2norm = dt.Squaredl2NormUnsafe(featureOrder, options.inverseLambda) * gamma * gamma 
+        		+ dtl.Squaredl2NormUnsafe() * gammaLabel * gammaLabel;
     	
         int updId = (updCnt + offset) % 3;
         if ( updId == 1 ) {
@@ -258,8 +307,15 @@ public class Parameters implements Serializable {
 	    		for (int i = 0, K = dt.size(); i < K; ++i) {
 		    		int x = dt.x(i);
 		    		double z = dt.value(i);
-		    		params[x] += coeff * z;
-		    		total[x] += coeff2 * z;
+		    		
+		    		if (featureOrder[x] == 1) {
+			    		params[x] += coeff * z;
+			    		total[x] += coeff2 * z;
+		    		}
+		    		else {
+			    		params[x] += coeff * z * options.inverseLambda;
+			    		total[x] += coeff2 * z * options.inverseLambda;
+		    		}
 	    		}
 	    		coeff = alpha * gammaLabel;
 	    		coeff2 = coeff * updCnt;

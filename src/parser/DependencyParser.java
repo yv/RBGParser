@@ -3,6 +3,7 @@ package parser;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -16,6 +17,7 @@ import parser.decoding.DependencyDecoder;
 import parser.io.DependencyReader;
 import parser.pruning.BasicArcPruner;
 import parser.sampling.RandomWalkSampler;
+import utils.FeatureVector;
 
 public class DependencyParser implements Serializable {
 	
@@ -75,6 +77,7 @@ public class DependencyParser implements Serializable {
 		
 		if (options.train) {
 			DependencyParser parser = new DependencyParser();
+			//DependencyParser parser = new BasicArcPruner();
 			parser.options = options;
 			
 			DependencyPipe pipe = new DependencyPipe(options);
@@ -102,7 +105,7 @@ public class DependencyParser implements Serializable {
             	parser.pipe.loadWordVectors(options.wordVectorFile);
 			
 			System.out.printf(" Evaluating: %s%n", options.testFile);
-			parser.evaluateSet(true, false);
+			parser.evaluateSet(true, false, null);
 		}
 		
 	}
@@ -223,15 +226,24 @@ public class DependencyParser implements Serializable {
     
     public void trainIter(DependencyInstance[] lstTrain, boolean evalAndSave) throws IOException
     {
-
+    	
     	DependencyDecoder decoder = DependencyDecoder
     			.createDependencyDecoder(options);
+    	BufferedWriter bw = new BufferedWriter(new FileWriter("debug." + Options.langString[options.lang.ordinal()]));
     	
     	int N = lstTrain.length;
     	int printPeriod = 10000 < N ? N/10 : 1000;
     	
+    	int updCnt = 0;
+    	
+    	BufferedWriter bw_f = new BufferedWriter(new FileWriter("feat." + Options.langString[options.lang.ordinal()]));
+    	BufferedWriter bw_m = new BufferedWriter(new FileWriter("model." + Options.langString[options.lang.ordinal()]));
+
     	for (int iIter = 0; iIter < options.maxNumIters; ++iIter) {
     	    
+    		decoder.resetCount();
+    		//parameters.randomParams();
+    		
     		if (pruner != null) pruner.resetPruningStats();
     		
             // use this offset to change the udpate ordering of U, V and W
@@ -253,25 +265,97 @@ public class DependencyParser implements Serializable {
 
     			//DependencyInstance inst = new DependencyInstance(lstTrain[i]);
     			DependencyInstance inst = lstTrain[i];
-    			LocalFeatureData lfd = new LocalFeatureData(inst, this, true);
-    		    GlobalFeatureData gfd = new GlobalFeatureData(lfd);
-    		    
     		    int n = inst.length;
     		    
-    		    DependencyInstance predInst = decoder.decode(inst, lfd, gfd, true);
+    			{
+	    			LocalFeatureData lfd = new LocalFeatureData(inst, this, true);
+	    		    GlobalFeatureData gfd = new GlobalFeatureData(lfd);
+	    		    
+	    		    DependencyInstance predInst = decoder.decode(inst, lfd, gfd, true);
+	    		    
+	        		int ua = evaluateUnlabelCorrect(inst, predInst), la = 0;
+	        		if (options.learnLabel)
+	        			la = evaluateLabelCorrect(inst, predInst);        		
+	        		uas += ua;
+	        		tot += n-1;
+	        		
+	        		if ((options.learnLabel && la != n-1) ||
+	        				(!options.learnLabel && ua != n-1)) {
+	        			
+	        			if (options.updateLocal) {
 
-        		int ua = evaluateUnlabelCorrect(inst, predInst), la = 0;
-        		if (options.learnLabel)
-        			la = evaluateLabelCorrect(inst, predInst);        		
-        		uas += ua;
-        		tot += n-1;
-        		
-        		if ((options.learnLabel && la != n-1) ||
-        				(!options.learnLabel && ua != n-1)) {
-        			loss += parameters.update(inst, predInst, lfd, gfd,
-        					iIter * N + i + 1, offset);
-                }
+		        			for (int m = 1; m < predInst.length; ++m) {
+	        					if (predInst.heads[m] != inst.heads[m]) {
+	    		        			updCnt++;
 
+	        						int oldHead = predInst.heads[m];
+	        						FeatureVector predFV = lfd.getPartialFeatureVector(predInst.heads, m);
+	        	    		    	//FeatureVector predFV = lfd.getArcFeatureVector(predInst.heads[m], m);
+	        						double predScore = parameters.dotProduct(predFV);
+	        						
+	        						predInst.heads[m] = inst.heads[m];
+	        						FeatureVector goldFV = lfd.getPartialFeatureVector(predInst.heads, m);
+	        						//FeatureVector goldFV = lfd.getArcFeatureVector(inst.heads[m], m);
+	        						double goldScore = parameters.dotProduct(goldFV);
+	        						
+	        						predInst.heads[m] = oldHead;
+	        						
+	        						loss += predScore + 1.0 - goldScore;
+	        						parameters.updateTheta(goldFV, predFV, predScore + 1.0 - goldScore, updCnt);
+	        					}
+	        				}
+	        			}
+	        			
+	        			updCnt++;
+	        			
+	        			loss += parameters.update(inst, predInst, lfd, gfd, updCnt, offset);
+	                }
+
+	        		// output feat
+	        		if (iIter == 10000) {
+	        			//System.out.println("aaa");
+	        			for (int z = 1; z < inst.length; ++z) {
+	        				bw_f.write("" + z + "\t" + inst.forms[z] + "\t" + inst.postags[z] + "\t" + inst.heads[z] + "\n");
+	        			}
+	        			FeatureVector goldFV = lfd.getFeatureVector(inst);
+	        			goldFV.addEntries(gfd.getFeatureVector(inst));
+	        			
+	        			int[] feat = goldFV.x();
+	        			String str = "";
+	        			for (int z = 0; z < feat.length; ++z) {
+	        				str += " " + feat[z];
+	        			}
+	        			bw_f.write(str.trim() + "\n\n");
+	        			bw_f.flush();
+	        			//System.out.println("bbb");
+	        		}
+    			}
+
+    		    // update for gold optimum?
+        		if (options.updateGold)
+        		{
+        			LocalFeatureData goldLfd = new LocalFeatureData(inst, this, true);
+        		    GlobalFeatureData goldGfd = new GlobalFeatureData(goldLfd);
+
+        		    DependencyInstance predGoldInst = decoder.decodeGold(inst, goldLfd, goldGfd, true);
+        		    
+            		int ua = evaluateUnlabelCorrect(inst, predGoldInst);
+            		int la = 0;
+            		if (options.learnLabel)
+            			la = evaluateLabelCorrect(inst, predGoldInst);        		
+            		uas += ua;
+            		tot += n-1;
+            		
+            		if ((options.learnLabel && la != n-1) ||
+            				(!options.learnLabel && ua != n-1)) {
+            			updCnt++;
+            			//loss += parameters.update(inst, predGoldInst, goldLfd, goldGfd,
+            			//		iIter * N + i + 1, offset);
+            			//loss += parameters.update(inst, predGoldInst, goldLfd, goldGfd,
+            			//		2 * (iIter * N + i + 1), offset);
+                    }
+       			
+        		}
     		}
     		System.out.printf("%n  Iter %d\tloss=%.4f\tuas=%.4f\t[%ds]%n", iIter+1,
     				loss, uas/(tot+0.0),
@@ -280,6 +364,8 @@ public class DependencyParser implements Serializable {
     		if (options.learningMode != LearningMode.Basic && options.pruning && pruner != null)
     			pruner.printPruningStats();
     		
+    		decoder.outputArcCount(bw);
+    		
     		// evaluate on a development set
     		if (evalAndSave && options.test && ((iIter+1) % 1 == 0 || iIter+1 == options.maxNumIters)) {		
     			System.out.println();
@@ -287,9 +373,10 @@ public class DependencyParser implements Serializable {
 	  			System.out.println();
 	  			System.out.printf(" Evaluation: %s%n", options.testFile);
 	  			System.out.println(); 
-                if (options.average) 
-                	parameters.averageParameters((iIter+1)*N);
-	  			double res = evaluateSet(false, false);
+                if (options.average) {
+                	parameters.averageParameters(updCnt);
+                }
+	  			double res = evaluateSet(false, false, bw);
                 System.out.println();
 	  			System.out.println("_____________________________________________");
 	  			System.out.println();
@@ -299,10 +386,18 @@ public class DependencyParser implements Serializable {
     	}
     	
     	if (evalAndSave && options.average) {
-            parameters.averageParameters(options.maxNumIters * N);
+            parameters.averageParameters(updCnt);
     	}
 
+    	bw.close();
         decoder.shutdown();
+        
+        //for (int z = 0; z < parameters.params.length; ++z) {
+        //	bw_m.write("" + z + "\t" + parameters.params[z] + "\n");
+        //}
+        
+        bw_f.close();
+        bw_m.close();
     }
     
     public int evaluateUnlabelCorrect(DependencyInstance act, DependencyInstance pred) 
@@ -353,7 +448,7 @@ public class DependencyParser implements Serializable {
     	return nCorrect;
     }
     
-    public double evaluateSet(boolean output, boolean evalWithPunc)
+    public double evaluateSet(boolean output, boolean evalWithPunc, BufferedWriter bw)
     		throws IOException {
     	
     	if (pruner != null) pruner.resetPruningStats();
@@ -427,6 +522,9 @@ public class DependencyParser implements Serializable {
     	if (options.pruning && options.learningMode != LearningMode.Basic && pruner != null)
     		pruner.printPruningStats();
         
+    	//if (bw != null)
+    	decoder.outputArcCount(bw);
+
         decoder.shutdown();
 
     	return (nUCorrect+0.0)/nDeps;

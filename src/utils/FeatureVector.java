@@ -102,6 +102,7 @@ public class FeatureVector {
 	}
 	
 	private static double[] l2Vec;
+	
 	public double Squaredl2NormUnsafe() {
 
 		if (l2Vec == null || l2Vec.length < nRows) l2Vec = new double[nRows];
@@ -110,6 +111,25 @@ public class FeatureVector {
 		for (int i = 0; i < size; ++i) l2Vec[x[i]] += va[i];
 		for (int i = 0; i < size; ++i) {
 			sum += l2Vec[x[i]] * l2Vec[x[i]];
+			l2Vec[x[i]] = 0;
+		}
+		return sum;
+		
+	}
+	
+	public double Squaredl2NormUnsafe(int[] featureOrder, double inverseLambda) {
+
+		if (l2Vec == null || l2Vec.length < nRows) l2Vec = new double[nRows];
+		
+		double sum = 0;
+		for (int i = 0; i < size; ++i) l2Vec[x[i]] += va[i];
+		for (int i = 0; i < size; ++i) {
+			if (featureOrder[x[i]] == 1) {
+				sum += l2Vec[x[i]] * l2Vec[x[i]];
+			}
+			else {
+				sum += l2Vec[x[i]] * l2Vec[x[i]] * inverseLambda;
+			}
 			l2Vec[x[i]] = 0;
 		}
 		return sum;

@@ -1,5 +1,7 @@
 package parser.pruning;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import parser.DependencyInstance;
@@ -11,6 +13,7 @@ import parser.LowRankParam;
 import parser.Options;
 import parser.Parameters;
 import parser.Options.LearningMode;
+import parser.decoding.DependencyDecoder;
 import utils.FeatureVector;
 
 public class BasicArcPruner extends DependencyParser {
@@ -49,9 +52,9 @@ public class BasicArcPruner extends DependencyParser {
 		int N = lstTrain.length;
 		int updCnt = 0;
     	
-		for (int iIter = 0; iIter < options.maxNumIters; ++iIter) {
+    	for (int iIter = 0; iIter < options.maxNumIters; ++iIter) {
 			
-			long start = 0;
+        	long start = 0;
 			double loss = 0;
 			int uas = 0, tot = 0;
 			start = System.currentTimeMillis();
@@ -66,11 +69,13 @@ public class BasicArcPruner extends DependencyParser {
     		    	
     		    	int goldhead = inst.heads[m];
     		    	FeatureVector goldfv = lfd.getArcFeatureVector(goldhead, m);
+    		    	//FeatureVector goldfv = lfd.getFeatureVector(inst);
     		    	double goldscore = parameters.dotProduct(goldfv);
     		    	
     		    	int predhead = -1;
     		    	FeatureVector predfv = null;
     		    	double best = Double.NEGATIVE_INFINITY;
+    		    	
     		    	
     		    	for (int h = 0; h < n; ++h)
     		    		if (h != m) {
@@ -84,11 +89,29 @@ public class BasicArcPruner extends DependencyParser {
     		    			}
     		    		}
     		    	
+    		    	
+    		    	/*
+					for (int h = 0; h < n; ++h)
+						if (h != m && !lfd.isPruned(h, m)
+						&& !isAncestorOf(inst.heads, m, h)) {
+							inst.heads[m] = h;
+							FeatureVector fv = lfd.getFeatureVector(inst);
+    		    			double va = parameters.dotProduct(fv)
+    		    					+ (h != goldhead ? 1.0 : 0.0);
+							if (va > best) {
+    		    				best = va;
+    		    				predhead = h;
+    		    				predfv = fv;
+ 							}
+						}
+   		    	*/
     		    	if (goldhead != predhead) {
     		    		++updCnt;
     		    		loss += best - goldscore;
     		    		parameters.updateTheta(goldfv, predfv, best - goldscore, updCnt);
     		    	} else ++uas;
+    		    	
+    		    	inst.heads[m] = goldhead;
     		    	++tot;
     		    }
 			}
@@ -97,11 +120,37 @@ public class BasicArcPruner extends DependencyParser {
     				loss, uas/(tot+0.0),
     				(System.currentTimeMillis() - start)/1000);
     		
+    		{
+	    		System.out.println();
+	    		System.out.println("_____________________________________________");
+	    		System.out.println();
+	    		System.out.printf(" Evaluation: %s%n", options.testFile);
+	    		System.out.println(); 
+	    		if (options.average) {
+	    			parameters.averageParameters(updCnt);
+	    		}
+	    		double res = evaluateSet(false, false, null);
+	    		System.out.println();
+	    		System.out.println("_____________________________________________");
+	    		System.out.println();
+	    		if (options.average) 
+	    			parameters.unaverageParameters();
+    		}
     	}
     	
-		if (options.average)
+		if (options.average) {
 			parameters.averageParameters(updCnt);
+		}
 
 	}
 	 	
+	private boolean isAncestorOf(int[] heads, int par, int ch) 
+	{
+		//int cnt = 0;
+		while (ch != 0) {
+			if (ch == par) return true;
+			ch = heads[ch];
+		}
+		return false;
+	}
 }

@@ -79,6 +79,7 @@ public class FeatureTemplate {
 	    CORE_LABEL_NTIC,
 	    CORE_LABEL_NTJ,
 
+	    COUNT_1O,
 	    
 		/*************************************************
 		 * 2o feature  
@@ -216,6 +217,8 @@ public class FeatureTemplate {
 		GC_HL_MC_SC,
 		GC_HC_ML_SC,
 		GC_HC_MC_SL,
+		
+		COUNT_2O,
 
 		// tri-sibling
 		HC_PC_MC_NC,
@@ -268,6 +271,8 @@ public class FeatureTemplate {
 		HL_CC_SC,
 		HC_CL_SC,
 		HC_CC_SL,
+		
+		COUNT_3O,
 
 		// pp attachment
 		PP_HC_MC,
