@@ -38,17 +38,25 @@ public class HillClimbingDecoder extends DependencyDecoder {
 	ExecutorCompletionService<Object> decodingService;
 	HillClimbingTask[] tasks;
 
-	HashMap<String, Integer[]> totalArcCount;
+	//HashMap<String, Integer[]> totalArcCount;
 	HashMap<Integer, Integer> sentArcCount;
-	int[] totalScoreDist;
-	ArrayList<Double> sentScoreDist;
-	ArrayList<Double> goldScore;
+	//int[] totalScoreDist;
+	ArrayList<Double> sentScore;
+	//ArrayList<Double> goldScore;
+	ArrayList<Double> avgScoreOverBest;
+	ArrayList<Double> avgScoreOverGold;
+	ArrayList<Double> avgScoreOverMap;
+
+	int totalSample;
+	int goldTotalDist;
 
 	int totalSent;
-	int optimalNum;
+	int bestTotalDist;
+	
+	int[] compare;
 
 	// temporary use for first order MAP
-	//ChuLiuEdmondDecoder tmpDecoder;
+	ChuLiuEdmondDecoder tmpDecoder;
 	
 	public HillClimbingDecoder(Options options) {
 		this.options = options;
@@ -57,13 +65,20 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		decodingService = new ExecutorCompletionService<Object>(executorService);
 		tasks = new HillClimbingTask[options.numHcThreads];
 
-		totalArcCount =  new HashMap<String, Integer[]>();
-		//tmpDecoder = new ChuLiuEdmondDecoder(options);
-		totalScoreDist = new int[100];
-		goldScore = new ArrayList<Double>();
+		//totalArcCount =  new HashMap<String, Integer[]>();
+		tmpDecoder = new ChuLiuEdmondDecoder(options);
+		//totalScoreDist = new int[100];
+		//goldScore = new ArrayList<Double>();
+		avgScoreOverBest = new ArrayList<Double>();
+		avgScoreOverGold = new ArrayList<Double>();
+		avgScoreOverMap = new ArrayList<Double>();
 
+		totalSample = 0;
 		totalSent = 0;
-		optimalNum = 0;
+		goldTotalDist = 0;
+		bestTotalDist = 0;
+		
+		compare = new int[3];
 
 		for (int i = 0; i < tasks.length; ++i) {
 			tasks[i] = new HillClimbingTask();
@@ -74,12 +89,20 @@ public class HillClimbingDecoder extends DependencyDecoder {
 
 	@Override
 	public void resetCount() {
-		totalArcCount = new HashMap<String, Integer[]>();
-		totalScoreDist = new int[100];
-		goldScore = new ArrayList<Double>();
+		//totalArcCount = new HashMap<String, Integer[]>();
+		//totalScoreDist = new int[100];
+		//goldScore = new ArrayList<Double>();
+		avgScoreOverBest = new ArrayList<Double>();
+		avgScoreOverGold = new ArrayList<Double>();
+		avgScoreOverMap = new ArrayList<Double>();
 
+		totalSample = 0;
 		totalSent = 0;
-		optimalNum = 0;
+		goldTotalDist = 0;
+		bestTotalDist = 0;
+		
+		compare = new int[3];
+		
 		//tmpDecoder.isOptimal.clear();
 		//tmpDecoder.lstNumOpt.clear();
 		//tmpDecoder.sentLength.clear();
@@ -116,6 +139,49 @@ public class HillClimbingDecoder extends DependencyDecoder {
 
 			//System.out.println("Find global optimal ratio: " + (double)optimalNum / totalSent);
 			//tmpDecoder.printLocalOptStats2();
+			
+			System.out.println("Avg dist to gold: " + (goldTotalDist + 0.0) / totalSample);
+			System.out.println("Avg dist to best: " + (bestTotalDist + 0.0) / totalSample);
+		
+			System.out.println("vote worse: " + compare[0] + " equal: " + compare[1] + " better: " + compare[2]);
+			
+			double sum = 0.0;
+			for (int i = 0; i < avgScoreOverBest.size(); ++i) {
+				sum += avgScoreOverBest.get(i);
+			}
+			double avg = sum / avgScoreOverBest.size();
+			sum = 0.0;
+			for (int i = 0; i < avgScoreOverBest.size(); ++i) {
+				sum += (avgScoreOverBest.get(i) - avg) * (avgScoreOverBest.get(i) - avg);
+			}
+			double stdDev = Math.sqrt(sum / (avgScoreOverBest.size() - 1));
+			System.out.println("avg score/best: " + avg + " " + stdDev);
+			
+			sum = 0.0;
+			for (int i = 0; i < avgScoreOverGold.size(); ++i) {
+				sum += avgScoreOverGold.get(i);
+			}
+			avg = sum / avgScoreOverGold.size();
+			sum = 0.0;
+			for (int i = 0; i < avgScoreOverGold.size(); ++i) {
+				sum += (avgScoreOverGold.get(i) - avg) * (avgScoreOverGold.get(i) - avg);
+			}
+			stdDev = Math.sqrt(sum / (avgScoreOverGold.size() - 1));
+			System.out.println("avg score/gold: " + avg + " " + stdDev);
+			
+			sum = 0.0;
+			for (int i = 0; i < avgScoreOverMap.size(); ++i) {
+				sum += avgScoreOverMap.get(i);
+			}
+			avg = sum / avgScoreOverMap.size();
+			sum = 0.0;
+			for (int i = 0; i < avgScoreOverMap.size(); ++i) {
+				sum += (avgScoreOverMap.get(i) - avg) * (avgScoreOverMap.get(i) - avg);
+			}
+			stdDev = Math.sqrt(sum / (avgScoreOverMap.size() - 1));
+			System.out.println("avg score/map: " + avg + " " + stdDev);
+			
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -225,7 +291,8 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		stopped = false;
 
 		sentArcCount = new HashMap<Integer, Integer>();
-		sentScoreDist = new ArrayList<Double>();
+		sentScore = new ArrayList<Double>();
+		totalSent++;
 
 		if (options.learnLabel)
 			staticTypes = lfd.getStaticTypes();
@@ -289,14 +356,10 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			goldScore.add(score);
 		}*/
 
-		/*
+		
 		DependencyInstance map = tmpDecoder.decode(inst, lfd, gfd, addLoss);
-		double mapScore = lfd.getScore(map) + gfd.getScore(map);
-		for (int m = 1; m < inst.length; ++m) {
-			Utils.Assert(!options.learnLabel);
-			if (addLoss && map.heads[m] != inst.heads[m])
-				mapScore += 1.0;			 
-		}
+		double mapScore = calcScore(map);
+		/*
 		totalSent++;
 		if (Math.abs(mapScore - bestScore) < 1e-6) {
 			optimalNum++;
@@ -306,7 +369,76 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			tmpDecoder.isOptimal.add(0);
 		}*/
 		
+		for (int m = 1; m < pred.length; ++m) {
+			for (int h = 0; h < pred.length; ++h) {
+				if (h == m || h == pred.heads[m])
+					continue;
+				
+				int code = h * pred.length + m;
+				if (sentArcCount.containsKey(code))
+					bestTotalDist += sentArcCount.get(code);
+			}
+		}
+		
+		// get majority vote
+		DependencyInstance votePred = tmpDecoder.majorityVote(inst, sentArcCount);
+		double voteScore = lfd.getScore(votePred) + gfd.getScore(votePred);
+		for (int m = 1; m < inst.length; ++m) {
+			Utils.Assert(!options.learnLabel);
+			if (addLoss && votePred.heads[m] != inst.heads[m])
+				voteScore += 1.0;			 
+		}
+		if (voteScore < bestScore - 1e-6) {
+			compare[0]++;
+		}
+		else if (voteScore > bestScore + 1e-6) {
+			compare[2]++;
+		}
+		else {
+			compare[1]++;
+		}
+		
+		/*
+		if (!addLoss) {
+			for (int m = 1; m < inst.length; ++m) {
+				for (int h = 0; h < inst.length; ++h) {
+					int code = h * inst.length + m;
+					if (sentArcCount.containsKey(code)) {
+						System.out.print(h + "/" + m + "/" + sentArcCount.get(code) + "\t");
+					}
+					else {
+						System.out.print(h + "/" + m + "/0\t");
+					}
+				}
+				System.out.println();
+			}
+			for (int m = 1; m < inst.length; ++m) {
+				System.out.print(votePred.heads[m] + "/" + pred.heads[m] + "/" + m + "\t");
+			}
+			System.out.println();
+			System.out.println("" + bestScore + " " + voteScore);
+			
+			try {
+				System.in.read();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}*/
+		
+		double sum = 0.0;
+		for (int i = 0; i < sentScore.size(); ++i)
+			sum += sentScore.get(i);
+		double avg = sum / sentScore.size();
+		double goldScore = lfd.getScore(inst) + gfd.getScore(inst);
+		
+		if (avg > 1e-6 && bestScore > 1e-6 && goldScore > 1e-6) {
+			avgScoreOverBest.add(avg / bestScore);
+			avgScoreOverGold.add(avg / goldScore);
+			avgScoreOverMap.add(avg / mapScore);
+		}
+		
 		return pred;		
+		//return votePred;		
 	}
 
 	private boolean isAncestorOf(int[] heads, int par, int ch) 
@@ -500,10 +632,10 @@ public class HillClimbingDecoder extends DependencyDecoder {
 					// add edge to sent count
 					if (unchangedRuns <= converge) {
 
-						//sentScoreDist.add(score);
+						totalSample++;
+						sentScore.add(score);
 						//Utils.Assert(now.length == pred.length);
-
-						/*
+						
 						for (int m = 1; m < now.length; ++m) {
 							int h = now.heads[m];
 							int code = h * now.length + m;
@@ -514,24 +646,15 @@ public class HillClimbingDecoder extends DependencyDecoder {
 							else {
 								sentArcCount.put(code, sentArcCount.get(code) + 1);
 							}
-						}*/
-
-						/*
-						// compare to map
-						for (int m = 1; m < map.length; ++m) {
-							int h = map.heads[m];
-							int code = h * now.length + m;
-
-							if (now.heads[m] == h) {
-								if (!sentArcCount.containsKey(code)) {
-									sentArcCount.put(code, 1);
-								}
-								else {
-									sentArcCount.put(code, sentArcCount.get(code) + 1);
-								}
+						}
+						
+						// compare to gold
+						for (int m = 1; m < inst.length; ++m) {
+							if (now.heads[m] != inst.heads[m]) {
+								goldTotalDist++;
 							}
 						}
-						 */
+						
 					}
 				}
 			}

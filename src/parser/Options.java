@@ -35,7 +35,7 @@ public class Options implements Cloneable, Serializable {
 	public LearningMode learningMode = LearningMode.Standard;
 	public boolean projective = false;
 	public boolean learnLabel = false;
-	public boolean pruning = true;
+	public boolean pruning = false;
 	public double pruningCoeff = 0.1;
 	public int labelLossType = 0;
 	
@@ -48,11 +48,11 @@ public class Options implements Cloneable, Serializable {
 	public int R = 50;
 	
 	// feature set
-	public boolean useCS = true;		// use consecutive siblings
-	public boolean useGP = true;		// use grandparent
-	public boolean useHB = true;		// use head bigram
-	public boolean useGS = true;		// use grand sibling
-	public boolean useTS = true;		// use tri-sibling
+	public boolean useCS = false;		// use consecutive siblings
+	public boolean useGP = false;		// use grandparent
+	public boolean useHB = false;		// use head bigram
+	public boolean useGS = false;		// use grand sibling
+	public boolean useTS = false;		// use tri-sibling
 	public boolean useGGP = false;		// use great-grandparent
 	public boolean usePSC = false;		// use parent-sibling-child
 	public boolean useHO = false;		// use global feature
@@ -60,7 +60,7 @@ public class Options implements Cloneable, Serializable {
 	public boolean updateGold = false;
 	public boolean updateLocal = false;
 	
-	public double inverseLambda = 0.1;
+	public double inverseLambda = 1.0;
 	
 	// CoNLL language specific info
 	// used only in Full learning mode

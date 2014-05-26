@@ -1,5 +1,7 @@
 package parser.decoding;
 
+import java.util.HashMap;
+
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TIntArrayList;
 import parser.DependencyInstance;
@@ -491,4 +493,55 @@ public class ChuLiuEdmondDecoder extends DependencyDecoder {
         //return numLocalOpt * maxLen;
         return tot;
     }
+	
+	public DependencyInstance majorityVote(DependencyInstance inst, HashMap<Integer, Integer> arcCount) 
+	{
+		int N = inst.length;
+        int M = N << 1;
+        
+        double[][] scores = new double[M][M];
+        int[][] oldI = new int[M][M];
+        int[][] oldO = new int[M][M];
+        for (int i = 0; i < N; ++i)
+            for (int j = 1; j < N; ++j) 
+                if (i != j) {
+                    oldI[i][j] = i;
+                    oldO[i][j] = j;
+                    
+                    int code = i * inst.length + j;
+                    if (!arcCount.containsKey(code)) {
+                    	scores[i][j] = Double.NEGATIVE_INFINITY;
+                        continue;
+                    }
+                    double va = arcCount.get(code);
+                    scores[i][j] = va;
+                }
+
+        boolean[] ok = new boolean[M];
+        boolean[] vis = new boolean[M];
+        boolean[] stack = new boolean[M];
+        for (int i = 0; i < M; ++i) ok[i] = true;
+
+        int[] final_par = new int[M];
+        for (int i = 0; i < M; ++i) final_par[i] = -1;
+        
+        chuLiuEdmond(N, scores, ok, vis, stack, oldI, oldO, final_par);
+        
+        if (print) System.out.println();
+        
+		DependencyInstance predInst = new DependencyInstance(inst);
+		predInst.heads = new int[N];
+		predInst.deplbids = new int[N];
+	    
+        predInst.heads[0] = -1;
+        for (int i = 1; i < N; ++i) {
+            int j = final_par[i];
+            int t = 0;
+            predInst.heads[i] = j;
+            predInst.deplbids[i] = t;
+        }
+        
+        return predInst;
+	}
+	
 }

@@ -466,6 +466,11 @@ public class DependencyParser implements Serializable {
     	int nUCorrect = 0, nLCorrect = 0;
     	int nDeps = 0, nWhole = 0, nSents = 0;
     	
+    	int maxErr = 100;
+    	int[] numError = new int[maxErr];
+    	int[] numErrorWoPunc = new int[maxErr];
+    	int token = 0;
+    	
     	DependencyInstance inst = pipe.createInstance(reader);    	
     	while (inst != null) {
     		LocalFeatureData lfd = new LocalFeatureData(inst, this, true);
@@ -483,6 +488,7 @@ public class DependencyParser implements Serializable {
                 }
             }
             nDeps += nToks;
+            token += inst.length - 1;
     		    		
             DependencyInstance predInst = decoder.decode(inst, lfd, gfd, false);
 
@@ -494,6 +500,12 @@ public class DependencyParser implements Serializable {
     		if ((options.learnLabel && la == nToks) ||
     				(!options.learnLabel && ua == nToks)) 
     			++nWhole;
+    		
+    		int corr = evaluateUnlabelCorrect(inst, predInst, true);
+    		int err = Math.min(maxErr - 1, inst.length - 1 - corr);
+    		numError[err]++;
+    		err = Math.min(maxErr - 1, nToks - ua);
+    		numErrorWoPunc[err]++;
     		
     		if (out != null) {
     			int[] deps = predInst.heads, labs = predInst.deplbids;
@@ -526,7 +538,47 @@ public class DependencyParser implements Serializable {
     	decoder.outputArcCount(bw);
 
         decoder.shutdown();
+        
+        /*
+        double sum = 0.0;
+        double oracleErr = 0.0;
+        int sent = 0;
+        for (int i = 0; i < maxErr; ++i) {
+        	System.out.print(numError[i] + " ");
+        	sum += numError[i] * i;
+        	sent += numError[i];
+        	if (i > 2)
+        		oracleErr += (i - 2) * numError[i];
+        }
+        System.out.println();
+        double avg = sum / sent;
+        double var = 0.0;
+        for (int i = 0; i < maxErr; ++i) {
+        	var += numError[i] * (i - avg) * (i - avg);
+        }
+        double stddev = Math.sqrt(var / (sent - 1));
+        
+        System.out.println("avg: " + avg + " std: " + stddev + " oracle: " + (token - oracleErr) / token);
 
+        double sumP = 0.0;
+        double oracleErrP = 0.0;
+        for (int i = 0; i < maxErr; ++i) {
+        	System.out.print(numErrorWoPunc[i] + " ");
+        	sumP += numErrorWoPunc[i] * i;
+        	if (i > 2)
+        		oracleErrP += (i - 2) * numErrorWoPunc[i];
+        }
+        System.out.println();
+        double avgP = sumP / sent;
+        double varP = 0.0;
+        for (int i = 0; i < maxErr; ++i) {
+        	varP += numErrorWoPunc[i] * (i - avgP) * (i - avgP);
+        }
+        double stddevP = Math.sqrt(varP / (sent - 1));
+        
+        System.out.println("avgP: " + avgP + " stdP: " + stddevP + " oracleP: " + (nDeps - oracleErrP) / nDeps);
+         */
+        
     	return (nUCorrect+0.0)/nDeps;
     }
 }
