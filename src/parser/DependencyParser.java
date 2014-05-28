@@ -471,7 +471,9 @@ public class DependencyParser implements Serializable {
     	int[] numErrorWoPunc = new int[maxErr];
     	int token = 0;
     	
-    	DependencyInstance inst = pipe.createInstance(reader);    	
+		long start = System.currentTimeMillis();
+
+		DependencyInstance inst = pipe.createInstance(reader);    	
     	while (inst != null) {
     		LocalFeatureData lfd = new LocalFeatureData(inst, this, true);
     		GlobalFeatureData gfd = new GlobalFeatureData(lfd); 
@@ -527,10 +529,11 @@ public class DependencyParser implements Serializable {
     	
     	System.out.printf("  Tokens: %d%n", nDeps);
     	System.out.printf("  Sentences: %d%n", nSents);
-    	System.out.printf("  UAS=%.6f\tLAS=%.6f\tCAS=%.6f%n",
+    	System.out.printf("  UAS=%.6f\tLAS=%.6f\tCAS=%.6f\t[%ds]%n",
     			(nUCorrect+0.0)/nDeps,
     			(nLCorrect+0.0)/nDeps,
-    			(nWhole + 0.0)/nSents);
+    			(nWhole + 0.0)/nSents,
+    			(System.currentTimeMillis() - start)/1000);
     	if (options.pruning && options.learningMode != LearningMode.Basic && pruner != null)
     		pruner.printPruningStats();
         

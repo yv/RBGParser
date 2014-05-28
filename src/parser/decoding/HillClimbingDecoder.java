@@ -40,6 +40,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 
 	//HashMap<String, Integer[]> totalArcCount;
 	HashMap<Integer, Integer> sentArcCount;
+	ArrayList<Integer[]> sampleDep;
 	//int[] totalScoreDist;
 	ArrayList<Double> sentScore;
 	//ArrayList<Double> goldScore;
@@ -49,6 +50,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 
 	int totalSample;
 	int goldTotalDist;
+	double goldScore;
 
 	int totalSent;
 	int bestTotalDist;
@@ -291,8 +293,11 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		stopped = false;
 
 		sentArcCount = new HashMap<Integer, Integer>();
+		sampleDep = new ArrayList<Integer[]>();
 		sentScore = new ArrayList<Double>();
 		totalSent++;
+
+		goldScore = calcScore(inst);
 
 		if (options.learnLabel)
 			staticTypes = lfd.getStaticTypes();
@@ -380,24 +385,6 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			}
 		}
 		
-		// get majority vote
-		DependencyInstance votePred = tmpDecoder.majorityVote(inst, sentArcCount);
-		double voteScore = lfd.getScore(votePred) + gfd.getScore(votePred);
-		for (int m = 1; m < inst.length; ++m) {
-			Utils.Assert(!options.learnLabel);
-			if (addLoss && votePred.heads[m] != inst.heads[m])
-				voteScore += 1.0;			 
-		}
-		if (voteScore < bestScore - 1e-6) {
-			compare[0]++;
-		}
-		else if (voteScore > bestScore + 1e-6) {
-			compare[2]++;
-		}
-		else {
-			compare[1]++;
-		}
-		
 		/*
 		if (!addLoss) {
 			for (int m = 1; m < inst.length; ++m) {
@@ -429,16 +416,58 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		for (int i = 0; i < sentScore.size(); ++i)
 			sum += sentScore.get(i);
 		double avg = sum / sentScore.size();
-		double goldScore = lfd.getScore(inst) + gfd.getScore(inst);
 		
 		if (avg > 1e-6 && bestScore > 1e-6 && goldScore > 1e-6) {
 			avgScoreOverBest.add(avg / bestScore);
 			avgScoreOverGold.add(avg / goldScore);
 			avgScoreOverMap.add(avg / mapScore);
+			
+			{
+				
+				sentArcCount.clear();
+				Utils.Assert(sampleDep.size() == sentScore.size());
+				Utils.Assert(sampleDep.size() > 0);
+				for (int i = 0; i < sampleDep.size(); ++i) {
+					Integer[] dep = sampleDep.get(i);
+					Utils.Assert(inst.length == dep.length);
+					double score = sentScore.get(i);
+					if (score < avg - 1e-6)
+						continue;
+					for (int m = 1; m < dep.length; ++m) {
+						int h = dep[m];
+						Utils.Assert(h >= 0);
+						int code = h * dep.length + m;
+						if (!sentArcCount.containsKey(code)) {
+							sentArcCount.put(code, 1);
+						}
+						else {
+							sentArcCount.put(code, sentArcCount.get(code) + 1);
+						}
+					}
+				}
+				
+			}
+			
 		}
 		
-		return pred;		
-		//return votePred;		
+		// get majority vote
+		DependencyInstance votePred = tmpDecoder.majorityVote(inst, sentArcCount);
+		double voteScore = calcScore(votePred);
+		
+		if (voteScore < bestScore - 1e-6) {
+			compare[0]++;
+		}
+		else if (voteScore > bestScore + 1e-6) {
+			compare[2]++;
+		}
+		else {
+			compare[1]++;
+		}
+		
+		if (!this.addLoss && options.useMajVote)
+			return votePred;
+		else
+			return pred;		
 	}
 
 	private boolean isAncestorOf(int[] heads, int par, int ch) 
@@ -625,15 +654,24 @@ public class HillClimbingDecoder extends DependencyDecoder {
 						if (unchangedRuns >= converge)
 							stopped = true;
 					}
+					
+					if (addLoss && options.firstViolation && bestScore > goldScore + 1e-6) {
+						stopped = true;
+					}
 					//++unchangedRuns;
 					//if (unchangedRuns >= converge)
 					//	stopped = true;
 
 					// add edge to sent count
 					if (unchangedRuns <= converge) {
+					//if (!stopped) {
 
 						totalSample++;
 						sentScore.add(score);
+						Integer[] dep = new Integer[now.length];
+						for (int m = 0; m < now.length; ++m)
+							dep[m] = now.heads[m];
+						sampleDep.add(dep);
 						//Utils.Assert(now.length == pred.length);
 						
 						for (int m = 1; m < now.length; ++m) {

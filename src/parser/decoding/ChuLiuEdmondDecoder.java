@@ -511,10 +511,13 @@ public class ChuLiuEdmondDecoder extends DependencyDecoder {
                     int code = i * inst.length + j;
                     if (!arcCount.containsKey(code)) {
                     	scores[i][j] = Double.NEGATIVE_INFINITY;
+                    	//scores[i][j] = 0;
                         continue;
                     }
-                    double va = arcCount.get(code);
-                    scores[i][j] = va;
+                    else {
+	                    double va = arcCount.get(code);
+	                    scores[i][j] = va;
+                    }
                 }
 
         boolean[] ok = new boolean[M];
