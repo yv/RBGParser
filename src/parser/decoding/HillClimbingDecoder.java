@@ -140,8 +140,9 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			//bw.flush();
 
 			//System.out.println("Find global optimal ratio: " + (double)optimalNum / totalSent);
-			//tmpDecoder.printLocalOptStats2();
+			tmpDecoder.printLocalOptStats2();
 			
+			/*
 			System.out.println("Avg dist to gold: " + (goldTotalDist + 0.0) / totalSample);
 			System.out.println("Avg dist to best: " + (bestTotalDist + 0.0) / totalSample);
 		
@@ -182,7 +183,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			}
 			stdDev = Math.sqrt(sum / (avgScoreOverMap.size() - 1));
 			System.out.println("avg score/map: " + avg + " " + stdDev);
-			
+			*/
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -364,15 +365,14 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		
 		DependencyInstance map = tmpDecoder.decode(inst, lfd, gfd, addLoss);
 		double mapScore = calcScore(map);
-		/*
-		totalSent++;
+		
 		if (Math.abs(mapScore - bestScore) < 1e-6) {
-			optimalNum++;
+			//optimalNum++;
 			tmpDecoder.isOptimal.add(1);
 		}
 		else {
 			tmpDecoder.isOptimal.add(0);
-		}*/
+		}
 		
 		for (int m = 1; m < pred.length; ++m) {
 			for (int h = 0; h < pred.length; ++h) {
@@ -451,6 +451,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		}
 		
 		// get majority vote
+		/*
 		DependencyInstance votePred = tmpDecoder.majorityVote(inst, sentArcCount);
 		double voteScore = calcScore(votePred);
 		
@@ -467,7 +468,8 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		if (!this.addLoss && options.useMajVote)
 			return votePred;
 		else
-			return pred;		
+		*/
+		return pred;		
 	}
 
 	private boolean isAncestorOf(int[] heads, int par, int ch) 

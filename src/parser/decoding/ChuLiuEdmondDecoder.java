@@ -1,5 +1,7 @@
 package parser.decoding;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.util.HashMap;
 
 import gnu.trove.list.array.TDoubleArrayList;
@@ -65,6 +67,7 @@ public class ChuLiuEdmondDecoder extends DependencyDecoder {
             	}
             }
 
+            /*
             int N = 10;
             for (int i = 0; i < N; i++) {
             	int tot = 0;
@@ -88,6 +91,17 @@ public class ChuLiuEdmondDecoder extends DependencyDecoder {
             	System.out.printf("\t%.3f/%.3f/%.3f", isOpt/tot, numOpt/tot, len / tot);
             }
             System.out.println();
+            */
+            
+            try {
+            	BufferedWriter bw = new BufferedWriter(new FileWriter("debug." + Options.langString[options.lang.ordinal()]));
+            	for (int i = 0; i < lstNumOpt.size(); ++i) {
+            		bw.write("" + sentLength.get(i) + "\t" + lstNumOpt.get(i) + "\t" + isOptimal.get(i) + "\n");
+            	}
+            	bw.close();
+            } catch (Exception e) {
+            	e.printStackTrace();
+            }
     }
 
     @Override
@@ -156,8 +170,8 @@ public class ChuLiuEdmondDecoder extends DependencyDecoder {
         }
         
         for (int i = 0; i < M; ++i) ok[i] = true;
-        //double numLocalOpt = chuLiuEdmond2(N, scores, ok, vis, stack, oldI, oldO, final_par);
-        double numLocalOpt = 1.0;
+        double numLocalOpt = chuLiuEdmond2(N, scores, ok, vis, stack, oldI, oldO, final_par);
+        //double numLocalOpt = 1.0;
         lstNumOpt.add(numLocalOpt);
         sentLength.add(inst.length - 1);
         //System.out.println(appoxNumLocalOpt + " " + numLocalOpt);
