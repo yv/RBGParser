@@ -536,9 +536,11 @@ public class DependencyParser implements Serializable {
     			(System.currentTimeMillis() - start)/1000);
     	if (options.pruning && options.learningMode != LearningMode.Basic && pruner != null)
     		pruner.printPruningStats();
+    	
+    	System.out.println("Seconds per token: " + ((System.currentTimeMillis() - start)/1000/token));
         
     	//if (bw != null)
-    	decoder.outputArcCount(bw);
+    	//decoder.outputArcCount(bw);
 
         decoder.shutdown();
         

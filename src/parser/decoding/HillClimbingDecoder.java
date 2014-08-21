@@ -293,12 +293,12 @@ public class HillClimbingDecoder extends DependencyDecoder {
 		unchangedRuns = 0;
 		stopped = false;
 
-		sentArcCount = new HashMap<Integer, Integer>();
-		sampleDep = new ArrayList<Integer[]>();
-		sentScore = new ArrayList<Double>();
-		totalSent++;
+		//sentArcCount = new HashMap<Integer, Integer>();
+		//sampleDep = new ArrayList<Integer[]>();
+		//sentScore = new ArrayList<Double>();
+		//totalSent++;
 
-		goldScore = calcScore(inst);
+		//goldScore = calcScore(inst);
 
 		if (options.learnLabel)
 			staticTypes = lfd.getStaticTypes();
@@ -362,7 +362,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 			goldScore.add(score);
 		}*/
 
-		
+		/*
 		DependencyInstance map = tmpDecoder.decode(inst, lfd, gfd, addLoss);
 		double mapScore = calcScore(map);
 		
@@ -383,7 +383,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 				if (sentArcCount.containsKey(code))
 					bestTotalDist += sentArcCount.get(code);
 			}
-		}
+		}*/
 		
 		/*
 		if (!addLoss) {
@@ -411,7 +411,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 				e.printStackTrace();
 			}
 		}*/
-		
+		/*
 		double sum = 0.0;
 		for (int i = 0; i < sentScore.size(); ++i)
 			sum += sentScore.get(i);
@@ -448,7 +448,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 				
 			}
 			
-		}
+		}*/
 		
 		// get majority vote
 		/*
@@ -648,23 +648,24 @@ public class HillClimbingDecoder extends DependencyDecoder {
 					++totRuns;
 					if (score > bestScore) {
 						bestScore = score;
-						unchangedRuns = 0;	
+						//unchangedRuns = 0;	
 						pred.heads = heads;
 						pred.deplbids = deplbids;
 					} else {
-						++unchangedRuns;
-						if (unchangedRuns >= converge)
-							stopped = true;
+						//++unchangedRuns;
+						//if (unchangedRuns >= converge)
+						//	stopped = true;
 					}
 					
 					if (addLoss && options.firstViolation && bestScore > goldScore + 1e-6) {
 						stopped = true;
 					}
-					//++unchangedRuns;
-					//if (unchangedRuns >= converge)
-					//	stopped = true;
+					++unchangedRuns;
+					if (unchangedRuns >= converge)
+						stopped = true;
 
 					// add edge to sent count
+					/*
 					if (unchangedRuns <= converge) {
 					//if (!stopped) {
 
@@ -694,8 +695,7 @@ public class HillClimbingDecoder extends DependencyDecoder {
 								goldTotalDist++;
 							}
 						}
-						
-					}
+					}*/
 				}
 			}
 		}
