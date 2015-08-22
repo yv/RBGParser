@@ -198,6 +198,9 @@ public class Options implements Cloneable, Serializable {
             else if (arg.startsWith("format:")) {
             	format = arg.split(":")[1];
             }
+            else if (arg.startsWith("lang:")) {
+                lang = PossibleLang.valueOf(arg.split(":")[1]);
+            }
     	}    	
         
         //gammaLabel = 1.0;
@@ -223,8 +226,9 @@ public class Options implements Cloneable, Serializable {
     		default:
     			break;
     	}
-    	
-    	lang = findLang(trainFile != null ? trainFile : testFile);
+        if (lang == null) { 	
+            lang = findLang(trainFile != null ? trainFile : testFile);
+        }
     }
     
     public void printOptions() {
@@ -261,6 +265,7 @@ public class Options implements Cloneable, Serializable {
         System.out.println("use parent-sibling-child: " + usePSC);
         System.out.println("use high-order: " + useHO);
         System.out.println("model: " + learningMode.name());
+        System.out.println("lang: " + lang);
 
     	System.out.println("------\n");
     }
@@ -270,7 +275,7 @@ public class Options implements Cloneable, Serializable {
     		if (lang != PossibleLang.Unknown && file.indexOf(langString[lang.ordinal()]) != -1) {
     			return lang;
     		}
-    	System.out.println("Warning: unknow language");
+    	System.out.println("Warning: unknown language");
     	return PossibleLang.Unknown;
     }
     
