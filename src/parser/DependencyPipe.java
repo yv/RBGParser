@@ -2,40 +2,29 @@ package parser;
 
 
 
-import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.map.hash.TLongObjectHashMap;
-import gnu.trove.map.hash.TObjectIntHashMap;
+import static parser.feature.FeatureTemplate.Arc.numArcFeatBits;
+import static parser.feature.FeatureTemplate.Word.numWordFeatBits;
+import static utils.DictionarySet.DictionaryTypes.DEPLABEL;
+import static utils.DictionarySet.DictionaryTypes.POS;
+import static utils.DictionarySet.DictionaryTypes.WORD;
+import static utils.DictionarySet.DictionaryTypes.WORDVEC;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
-//import javax.swing.text.html.HTMLDocument.HTMLReader.TagAction;
-
-import parser.DependencyInstance.SpecialPos;
-import parser.Options.LearningMode;
 import parser.Options.PossibleLang;
-import parser.feature.FeatureTemplate;
-import parser.feature.FeatureTemplate.Arc;
 import parser.feature.SyntacticFeatureFactory;
 import parser.io.DependencyReader;
-import utils.Alphabet;
 import utils.Dictionary;
 import utils.DictionarySet;
-import utils.FeatureVector;
 import utils.Utils;
-import static parser.feature.FeatureTemplate.Arc.*;
-import static parser.feature.FeatureTemplate.Word.*;
-import static utils.DictionarySet.DictionaryTypes.*;
 
 public class DependencyPipe implements Serializable {
 	

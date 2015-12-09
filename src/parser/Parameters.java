@@ -3,6 +3,7 @@ package parser;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import static utils.DictionarySet.DictionaryTypes.DOMAIN;
 import utils.FeatureVector;
 import utils.Utils;
 
@@ -29,16 +30,19 @@ public class Parameters implements Serializable {
 	
 	public transient FeatureVector[] dU, dV, dW;
 	
+	public int[] domain;
+	
 	public Parameters(DependencyPipe pipe, Options options) 
 	{
 		 //T = pipe.types.length;
+		int numDomains = pipe.dictionaries.get(DOMAIN).size();
         D = d * 2 + 1;
-		size = pipe.synFactory.numArcFeats+1;		
+		size = pipe.synFactory.numArcFeats+1+numDomains;		
 		params = new float[size];
 		total = new float[size];
 		
 		if (options.learnLabel) {
-			sizeL = pipe.synFactory.numLabeledArcFeats+1;
+			sizeL = pipe.synFactory.numLabeledArcFeats+1+numDomains;
 			paramsL = new float[sizeL];
 			totalL = new float[sizeL];
 		}
@@ -61,7 +65,8 @@ public class Parameters implements Serializable {
 		dU = new FeatureVector[rank];
 		dV = new FeatureVector[rank];
 		dW = new FeatureVector[rank];
-
+		
+		domain = DependencyInstance.DEFAULT_DOMAIN;
 	}
 	
 	public void randomlyInitUVW() 
@@ -211,12 +216,20 @@ public class Parameters implements Serializable {
 	
 	public double dotProduct(FeatureVector fv)
 	{
-		return fv.dotProduct(params);
+		double sum = 0.0;
+		for (int j: domain) {
+			sum += fv.dotProduct(params, j);
+		}
+		return sum;
 	}
 	
 	public double dotProductL(FeatureVector fv)
 	{
-		return fv.dotProduct(paramsL);
+		double sum = 0.0;
+		for (int j: domain) {
+			sum += fv.dotProduct(paramsL, j);
+		}
+		return sum;
 	}
 	
 	public double dotProduct(double[] proju, double[] projv, int dist)
@@ -241,8 +254,11 @@ public class Parameters implements Serializable {
     	double Fi = getLabelDis(actDeps, actLabs, predDeps, predLabs);
         	
     	FeatureVector dtl = lfd.getLabeledFeatureDifference(gold, pred);
-    	double loss = - dtl.dotProduct(paramsL) + Fi;
-        double l2norm = dtl.Squaredl2NormUnsafe();
+    	double loss = Fi;
+    	for (int j:domain) {
+    	   loss  -= dtl.dotProduct(paramsL, j);
+    	}
+        double l2norm = dtl.Squaredl2NormUnsafe() * domain.length;
     	
         double alpha = loss/l2norm;
     	alpha = Math.min(C, alpha);
@@ -252,8 +268,10 @@ public class Parameters implements Serializable {
     		for (int i = 0, K = dtl.size(); i < K; ++i) {
 	    		int x = dtl.x(i);
 	    		double z = dtl.value(i);
-	    		paramsL[x] += coeff * z;
-	    		totalL[x] += coeff2 * z;
+	    		for (int j: domain) {
+	    			paramsL[x+j] += coeff * z;
+	    			totalL[x+j] += coeff2 * z;
+	    		}
     		}
     	}
     	
@@ -276,10 +294,14 @@ public class Parameters implements Serializable {
     	FeatureVector dt = lfd.getFeatureDifference(gold, pred);
     	dt.addEntries(gfd.getFeatureDifference(gold, pred));
     	    	
-        double loss = - dt.dotProduct(params)*gamma + Fi;
-        double l2norm = dt.Squaredl2NormUnsafe() * gamma * gamma;
+        double loss = Fi;
+        for (int j: domain) {
+        	loss -= dt.dotProduct(params, j)*gamma;
+        }
+        double l2norm = dt.Squaredl2NormUnsafe() * gamma * gamma * domain.length;
     	
         int updId = (updCnt + offset) % 3;
+        //TODO figure out how to update the U/V/W matrices
         //if ( updId == 1 ) {
         	// update U
         	for (int k = 0; k < rank; ++k) {        		
@@ -317,8 +339,10 @@ public class Parameters implements Serializable {
 	    		for (int i = 0, K = dt.size(); i < K; ++i) {
 		    		int x = dt.x(i);
 		    		double z = dt.value(i);
-		    		params[x] += coeff * z;
-		    		total[x] += coeff2 * z;
+		    		for (int j: domain) {
+		    			params[x+j] += coeff * z;
+		    			total[x+j] += coeff2 * z;
+		    		}
 	    		}
     		}
     		
@@ -389,8 +413,10 @@ public class Parameters implements Serializable {
     		for (int i = 0, K = fv.size(); i < K; ++i) {
 	    		int x = fv.x(i);
 	    		double z = fv.value(i);
-	    		params[x] += coeff * z;
-	    		total[x] += coeff2 * z;
+	    		for (int j: domain) {
+	    			params[x+j] += coeff * z;
+	    			total[x+j] += coeff2 * z;
+	    		}
     		}
 	    }
 	}
@@ -495,4 +521,8 @@ public class Parameters implements Serializable {
     	if (dis > d) dis = d;
     	return x > 0 ? dis : dis + d;
     }
+
+	public void setDomain(int[] domainIds) {
+		domain = domainIds;
+	}
 }

@@ -291,6 +291,7 @@ public class DependencyParser implements Serializable {
 
     			//DependencyInstance inst = new DependencyInstance(lstTrain[i]);
     			DependencyInstance inst = lstTrain[i];
+    			parameters.setDomain(inst.domainIds);
     			LocalFeatureData lfd = new LocalFeatureData(inst, this, true, true);
     		    GlobalFeatureData gfd = new GlobalFeatureData(lfd);
     		    
@@ -424,6 +425,7 @@ public class DependencyParser implements Serializable {
     	
     	DependencyInstance inst = pipe.createInstance(reader);    	
     	while (inst != null) {
+    		parameters.setDomain(inst.domainIds);
     		LocalFeatureData lfd = new LocalFeatureData(inst, this, true, false);
     		GlobalFeatureData gfd = new GlobalFeatureData(lfd); 
 
@@ -481,6 +483,7 @@ public class DependencyParser implements Serializable {
     	
     	DependencyInstance inst = pipe.createInstance(reader);    	
     	while (inst != null) {
+    		parameters.setDomain(inst.domainIds);
     		LocalFeatureData lfd = new LocalFeatureData(inst, this, true, false);
     		GlobalFeatureData gfd = new GlobalFeatureData(lfd); 
     		

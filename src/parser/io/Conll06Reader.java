@@ -8,6 +8,7 @@ import parser.Options;
 
 
 public class Conll06Reader extends DependencyReader {
+	public String[] domains = {"all"};
 
 	public Conll06Reader(Options options) {
 		this.options = options;
@@ -20,6 +21,11 @@ public class Conll06Reader extends DependencyReader {
 
 	    String line = reader.readLine();
 	    while (line != null && !line.equals("") && !line.startsWith("*")) {
+	    	if (line.startsWith("#dom ")) {
+	    		domains = line.substring(5).split("[ \t]+");
+	    		line = reader.readLine();
+	    		continue;
+	    	}
 	    	lstLines.add(line.split("\t"));
 	    	line = reader.readLine();
 	    }
@@ -61,7 +67,9 @@ public class Conll06Reader extends DependencyReader {
 	    }
 	    if (!hasLemma) lemmas = null;
 	    
-		return new DependencyInstance(forms, lemmas, cpos, pos, feats, heads, deprels);
+		DependencyInstance result = new DependencyInstance(forms, lemmas, cpos, pos, feats, heads, deprels);
+		result.setDomains(domains);
+		return result;
 	}
 
 	@Override

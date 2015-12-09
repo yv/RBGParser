@@ -1,7 +1,5 @@
 package parser;
 
-import utils.Utils;
-
 public class DependencyArcList {
 	public int n;
 	public int[] st, edges;
@@ -206,6 +204,7 @@ public class DependencyArcList {
 		}
 	}
 	
+	@SuppressWarnings("unused")
 	private boolean isAncestorOf(int[] heads, int par, int ch) 
 	{
         int cnt = 0;

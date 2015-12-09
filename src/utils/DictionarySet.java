@@ -28,6 +28,7 @@ public class DictionarySet implements Serializable {
 		DEPLABEL,
 		WORDVEC,
 		//AUGLABEL,
+		DOMAIN,
 		
 		TYPE_END;
 	}

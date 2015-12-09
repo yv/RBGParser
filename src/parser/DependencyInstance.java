@@ -4,6 +4,7 @@ import static utils.DictionarySet.DictionaryTypes.DEPLABEL;
 import static utils.DictionarySet.DictionaryTypes.POS;
 import static utils.DictionarySet.DictionaryTypes.WORD;
 import static utils.DictionarySet.DictionaryTypes.WORDVEC;
+import static utils.DictionarySet.DictionaryTypes.DOMAIN;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -16,6 +17,7 @@ import parser.Options.PossibleLang;
 import utils.Alphabet;
 import utils.Dictionary;
 import utils.DictionarySet;
+import utils.DictionarySet.DictionaryTypes;
 
 public class DependencyInstance implements Serializable {
 	
@@ -24,7 +26,9 @@ public class DependencyInstance implements Serializable {
 	}
 
 	private static final long serialVersionUID = 1L;
-	
+
+	public static final int[] DEFAULT_DOMAIN = {0};
+
 	public int length;
 
 	// FORM: the forms - usually words, like "thought"
@@ -51,6 +55,9 @@ public class DependencyInstance implements Serializable {
 	// DEPREL: the dependency relations, e.g. "SUBJ"
 	public String[] deprels;
 	
+	// the domains that this dependency instance belongs to
+	public String[] domains;
+	
 	public int[] formids;
 	public int[] lemmaids;
 	public int[] postagids;
@@ -60,6 +67,8 @@ public class DependencyInstance implements Serializable {
 	public int[] wordVecIds;
 
 	public int[] deplbids;
+	
+	public int[] domainIds;
 
     public DependencyInstance() {}
     
@@ -105,6 +114,8 @@ public class DependencyInstance implements Serializable {
     	deplbids = a.deplbids;
     	featids = a.featids;
     	wordVecIds = a.wordVecIds;
+    	domains = a.domains;
+    	domainIds = a.domainIds;
     }
     
     //public void setDepIds(int[] depids) {
@@ -125,6 +136,16 @@ public class DependencyInstance implements Serializable {
 			postagids[i] = dicts.lookupIndex(POS, "pos="+postags[i]);
 			cpostagids[i] = dicts.lookupIndex(POS, "cpos="+cpostags[i]);
 			deplbids[i] = dicts.lookupIndex(DEPLABEL, deprels[i]) - 1;	// zero-based
+    	}
+    	
+    	if (domains != null) {
+    		domainIds = new int[domains.length];
+    		for (int i = 0; i < domains.length; i++) {
+    			// first ID is 1=unknown; we want to map "all" and "unknown" to 0
+    			domainIds[i] = Math.max(0, dicts.lookupIndex(DOMAIN, domains[i]) - 2);
+    		}
+    	} else {
+    		domainIds = DEFAULT_DOMAIN;
     	}
     	
     	if (lemmas != null) {
@@ -211,4 +232,8 @@ public class DependencyInstance implements Serializable {
 		    return "<num>";
 		return s;
     }
+
+	public void setDomains(String[] doms) {
+		this.domains = doms;
+	}
 }
